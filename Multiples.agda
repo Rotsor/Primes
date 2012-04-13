@@ -25,7 +25,7 @@ private
  module <O = StrictTotalOrder Data.Nat.Properties.strictTotalOrder
 
 abstract
- multiples' : ∀ n (k : ℕ) → n > 0 → SortedExhaustiveStream' _<_ (λ x → n ∣ x) (getBound n k)
+ multiples' : ∀ n (k : ℕ) → n > 0 → SortedExhaustiveStream _<_ (λ x → n ∣ x) (getBound n k)
  multiples' n k n>0 = (minimum (k * n) (divides k PropEq.refl , good) minimal) ∷ ♯ multiples' n (suc k) n>0 where
 
   +-lem-inv : ∀ {n a b} → a ≤ b → n + a ≤ n + b
@@ -62,6 +62,6 @@ abstract
   ... | zzz = ≥⇒≯ (zzz *-mono ≤O.reflexive (PropEq.refl {x = n})) y<kn
 
 abstract
- multiples : ∀ n → n > 0 → SortedExhaustiveStream' _<_ (λ x → n ∣ x) nothing
+ multiples : ∀ n → n > 0 → SortedExhaustiveStream _<_ (λ x → n ∣ x) nothing
  multiples n n>0 = multiples' n 0 n>0
 

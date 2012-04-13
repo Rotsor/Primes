@@ -16,7 +16,7 @@ open import SortedExhaustiveStream
 open import Data.Maybe
 
 Sifted≤ : ℕ → Set
-Sifted≤ n = SortedExhaustiveStream' _<_ (IsRetainedAfterSieve≤  n) nothing
+Sifted≤ n = SortedExhaustiveStream _<_ (IsRetainedAfterSieve≤  n) nothing
 
 open import Relation.Binary
 open import Data.Nat.Properties

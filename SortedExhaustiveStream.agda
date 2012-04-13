@@ -4,6 +4,7 @@ module SortedExhaustiveStream where
 import MRel
 open import Data.Maybe
 open import Data.Empty
+open import Data.Sum
 open import Data.Product
 open import Coinduction
 open import Relation.Binary
@@ -23,14 +24,17 @@ record Minimum {A : Set} (P : Pred A Level.zero) (_<_ : A → A → Set) : Set w
   holds : P value
   isMin : IsMinimal P _<_ value
 
-record SortedExhaustiveStream' {A : Set} (_<_ : A → A → Set) (P : A → Set) (b : Maybe A) : Set where
+None : {A : Set} (P : Pred A Level.zero) (_<_ : A → A → Set) (lb : Maybe A) (ub : A) → Set
+None P _<_ lb ub = let open MRel _<_ in ∀ {x} → lb m< just x → ¬ ub < x → ¬ P x
+
+Good : ∀ {A : Set} (P : A → Set) (_<_ : A → A → Set) (bound : Maybe A) → A → Set
+Good P _<_ bnd x = let open MRel _<_ in P x × bnd m< just x
+
+record SortedExhaustiveStream {A : Set} (_<_ : A → A → Set) (P : A → Set) (b : Maybe A) : Set where
  constructor _∷_
- open MRel _<_
- Good : Pred A Level.zero
- Good x = P x × b m< just x
  field
-  headd : Minimum Good _<_
-  taill : ∞ (SortedExhaustiveStream' _<_ P (just (Minimum.value headd)))
+  headd : Minimum (Good P _<_ b) _<_
+  taill : ∞ (SortedExhaustiveStream _<_ P (just (Minimum.value headd)))
 
 open import Function
 
@@ -44,14 +48,17 @@ module WithTotalOrder (A : Set) (_<_ : A → A → Set) (order : IsStrictTotalOr
     where
   open IsStrictTotalOrder order
 
-{-   data _∈_ {P : A → Set} {b : Maybe A} : A → SortedExhaustiveStream' _<_ P b → Set where
-    here : ∀ {stream} → SortedExhaustiveStream'.headd stream ∈ stream
-    there : ∀ {x stream} → x ∈ (♭ (SortedExhaustiveStream'.taill stream)) → x ∈ stream -}
 
   module MR = MRel _<_
   open MR using (_m<_)
   mtrans : ∀ {a b c} → a m< b → b m< c → a m< c
   mtrans {a} {b} {c} = MR.trans trans {a} {b} {c}
+
+  extend-isMinimal : ∀ {P : A → Set} x → {b : A} → 
+     IsMinimal (Good P _<_ (just b)) _<_ x → ∀ {a} → None P _<_ a b → IsMinimal (Good P _<_ a) _<_ x
+  extend-isMinimal x {b} mn {a} nn {y} good-y y<x with b <? y
+  extend-isMinimal x mn nn {y} (py , a<y) y<x | yes b<y = mn {y} (py , b<y) y<x
+  extend-isMinimal x mn nn {y} (py , a<y) y<x | no ¬p = nn a<y (λ z → mn (py , z) y<x) py
 
   m>-wf : ∀ max → Well-founded (Bounded-> _m<_ max)
   m>-wf nothing = λ _ → acc λ { x (_ , ()) }
@@ -71,56 +78,59 @@ module WithTotalOrder (A : Set) (_<_ : A → A → Set) (order : IsStrictTotalOr
   SSTEP : (P₁ P₂ : A → Set) → (mx : A) → (n : Maybe A) → Set
   SSTEP P₁ P₂ mx n = 
     n m< just mx
-    → (as : SortedExhaustiveStream' _<_ P₁ n)
-    → (bs : SortedExhaustiveStream' _<_ P₂ n)
-    → Σ (Minimum (λ y → (P₁ y × ¬ P₂ y) × n m< just y) _<_) (λ mn → let x = Minimum.value mn in SortedExhaustiveStream' {A} _<_ P₁ (just x) × SortedExhaustiveStream' {A} _<_ P₂ (just x))
+    → (asbs : SortedExhaustiveStream _<_ P₁ n × SortedExhaustiveStream _<_ P₂ n)
+    → Σ (Minimum (λ y → (P₁ y × ¬ P₂ y) × n m< just y) _<_) (λ mn → let x = Minimum.value mn in SortedExhaustiveStream {A} _<_ P₁ (just x) × SortedExhaustiveStream {A} _<_ P₂ (just x))
 
-  subtract'-step : 
+  subtract-step : 
     ∀ {P₁ : A → Set} {P₂ : A → Set} {n : Maybe A}
     → (mx : A)
     → (P₁ mx × ¬ P₂ mx)
     → SSTEP P₁ P₂ mx n
-  subtract'-step {P₁} {P₂} {n} mx (p₁x , ¬p₂x) = All.wfRec (m>-wf (just mx)) (SSTEP P₁ P₂ mx) go n where 
+  subtract-step {P₁} {P₂} {n} mx (p₁x , ¬p₂x) = All.wfRec (m>-wf (just mx)) (SSTEP P₁ P₂ mx) go'' n where 
 
     _>_ = Bounded-> _m<_ (just mx)
 
-    go : ∀ n → (rec : ∀ n' → n' > n → SSTEP P₁ P₂ mx n') →  SSTEP P₁ P₂ mx n
-    go n rec n<mx (minimum a good minimal ∷ as) (minimum b good' minimal' ∷ bs) with compare a b
-    go n rec n<mx (minimum a (pa , n<a) a-minimal ∷ as) (minimum b (p₂b , n<b) b-minimal ∷ bs) | tri< a<b ¬b ¬c = minimum a ((pa , (λ p₂a → b-minimal (p₂a , n<a) a<b)) , n<a) (λ { {y} ((p₁y , ¬p₂y) , n<y) y<a → a-minimal {y} (p₁y , n<y) y<a }) , ♭ as , (minimum b (p₂b , a<b) (λ { {y} (p₂y , a<y) → b-minimal (p₂y , mtrans {n} {just a} {just y} n<a a<y )} ) ∷ bs)
-    go n rec n<mx (minimum .b (p₁a , n<a) a-minimal ∷ as) (minimum b (p₂b , n<b) b-minimal ∷ bs) | tri≈ ¬a<b PropEq.refl ¬b<a with rec (just b) (n<b , b<mx) b<mx (♭ as) (♭ bs)  where
-      b<mx : b < mx
-      b<mx with compare b mx
-      b<mx | tri< b<mx _ _ = b<mx
-      b<mx | tri≈ _ b≡mx _ = ⊥-elim (¬p₂x (PropEq.subst P₂ b≡mx p₂b))
-      b<mx | tri> _ _ b>mx = ⊥-elim (a-minimal {mx} (p₁x , n<mx) b>mx)
-    ... | (minimum r (p₁¬p₂r , b<r) r-minimal) , str₁ , str₂ = minimum r (p₁¬p₂r , mtrans {n} {just b} {just r} n<b b<r) r-minimal' , str₁ , str₂ where
-      r-minimal' : IsMinimal (λ y → (P₁ y × ¬ P₂ y) × n m< just y) _<_ r
-      r-minimal' {y} gg y<r with compare b y
-      r-minimal' {y} (good-y , n<y) y<r | tri< b<y _ _ = r-minimal {y} (good-y , b<y) y<r
-      r-minimal' ((proj₁ , ¬p₂y) , n<y) y<r | tri≈ ¬a PropEq.refl ¬c = ¬p₂y p₂b
-      r-minimal' {y} ((p₁y , _) , n<y) y<r | tri> _ _ y<b = a-minimal {y} (p₁y , n<y) (y<b)
-    go n rec n<mx (minimum a (p₁a , n<a) a-minimal ∷ as) (minimum b (p₂b , n<b) b-minimal ∷ bs) | tri> ¬a<b ¬a≈b b<a with rec (just b) (n<b , b<mx) b<mx (minimum a (p₁a , b<a) (λ { {y} (p₁y , b<y) y<a → a-minimal {y} (p₁y , mtrans {n} {just b} {just y} n<b b<y) y<a }) ∷ as) (♭ bs) where
-      b<mx : b < mx
-      b<mx with compare b mx
-      b<mx | tri< b<mx _ _ = b<mx
-      b<mx | tri≈ _ b≡mx _ = ⊥-elim (a-minimal {mx} (p₁x , n<mx) (PropEq.subst (λ q → q < a) b≡mx b<a))
-      b<mx | tri> _ _ b>mx = ⊥-elim (a-minimal {mx} (p₁x , n<mx) (trans b>mx b<a))
-    ... | minimum r (p₁¬p₂r , b<r) r-minimal , str₁ , str₂ = minimum r (p₁¬p₂r , mtrans {n} {just b} {just r} n<b b<r) r-minimal' , str₁ , str₂ where
-      r-minimal' : IsMinimal (λ y → (P₁ y × ¬ P₂ y) × n m< just y) _<_ r
-      r-minimal' {y} gg y<r with compare b y
-      r-minimal' {y} (good-y , n<y) y<r | tri< b<y _ _ = r-minimal {y} (good-y , b<y) y<r
-      r-minimal' ((proj₁ , ¬p₂y) , n<y) y<r | tri≈ ¬a PropEq.refl ¬c = ¬p₂y p₂b
-      r-minimal' {y} ((p₁y , _) , n<y) y<r | tri> _ _ y<b = a-minimal {y} (p₁y , n<y) (trans y<b b<a)
+    trans'' : ∀ {a b c} → ¬ b < a → b < c → a < c
+    trans'' {a} {b} {c} a≤b b<c with compare a c
+    ... | tri< y _ _  = y
+    trans'' a≤b b<c | tri≈ ¬a PropEq.refl ¬c = ⊥-elim (a≤b b<c)
+    ... | tri> _ _ gt = ⊥-elim (a≤b (trans b<c gt))
 
-  subtract' : 
+    go' : ∀ n
+     → (as : SortedExhaustiveStream _<_ P₁ n)
+     → (bs : SortedExhaustiveStream _<_ P₂ n)
+     → ∃ ((((_m<_ n) ∩ (SortedExhaustiveStream {A} _<_ P₁ ∩ SortedExhaustiveStream {A} _<_ P₂)) ∘ just) ∩ (let PP = P₁ ∩ (¬_ ∘ P₂) in (PP ∩ IsMinimal (Good PP _<_ n) _<_) ∪ None PP _<_ n))
+    go' n (minimum a (p₁a , n<a) a-minimal ∷ as) (minimum b (p₂b , n<b) b-minimal ∷ bs) with compare a b
+    ... | tri< a<b _ _ = a , ((n<a , (♭ as , minimum b (p₂b , a<b) (λ { {y} (p₂y , a<y) → b-minimal (p₂y , mtrans {n} {just a} {just y} n<a a<y) }) ∷ bs)) , inj₁ ((p₁a , (λ p₂a → b-minimal (p₂a , n<a) a<b)) , λ { {y} ((p₁y , ¬p₂y) , n<y) y<a → a-minimal {y} (p₁y , n<y) y<a }))
+    go' n (minimum a (p₁a , n<a) a-minimal ∷ as) (minimum .a (p₂b , n<b) b-minimal ∷ bs) | tri≈ _ PropEq.refl _ = a , (n<a , (♭ as , ♭ bs)) , inj₂ none where
+     none : None (λ q → P₁ q × ¬ P₂ q) _<_ n a
+     none {y} n<y a<y (p₁y , _) with compare y a
+     ... | tri< y<a _ _ = a-minimal {y} (p₁y , n<y)  y<a
+     none n<y a<y (p₁y , ¬p₂y) | tri≈ ¬a PropEq.refl ¬c = ⊥-elim (¬p₂y p₂b)
+     ... | tri> _ _ y>a = ⊥-elim (a<y y>a)
+    ... | tri> _ _ b<a = b , (n<b , minimum a (p₁a , b<a) (λ { {y} (p₁y , b<y) y<a → a-minimal {y} (p₁y , mtrans {n} {just b} {just y} n<b b<y) y<a }) ∷ as , ♭ bs) , inj₂ none where
+     none : None (λ q → P₁ q × ¬ P₂ q) _<_ n b
+     none {y} n<y ¬b<y (p₁p , ¬p₂y) = a-minimal (p₁p , n<y) (trans'' ¬b<y b<a)
+
+    go'' : ∀ n → (rec : ∀ n' → n' > n → SSTEP P₁ P₂ mx n') →  SSTEP P₁ P₂ mx n
+    go'' n rec n<mx (as , bs) with go' n as bs
+    go'' n rec n<mx (as , bs) | n' , (n<n' , asbs') , inj₁ (n'-good , n'-minimal) = (minimum n' (n'-good , n<n') n'-minimal) , asbs'
+    go'' n rec n<mx (as , bs) | n' , (n<n' , asbs') , inj₂ none with rec (just n') (n<n' , n'<mx) n'<mx asbs' where
+      n'<mx : n' < mx
+      n'<mx with n' <? mx
+      n'<mx | yes n'<mx = n'<mx
+      n'<mx | no n< = ⊥-elim (none n<mx n< (p₁x , ¬p₂x))
+    ... | minimum r (p₁¬p₂r , n'<r) r-minimal , asbsr = minimum r (p₁¬p₂r , mtrans {n} {just n'} {just r} n<n' n'<r) (extend-isMinimal r {n'} r-minimal {n} none) , asbsr
+
+  subtract : 
     {P₁ : A → Set} {P₂ : A → Set} {b : Maybe A}
-    → SortedExhaustiveStream' _<_ P₁ b
-    → SortedExhaustiveStream' _<_ P₂ b
+    → SortedExhaustiveStream _<_ P₁ b
+    → SortedExhaustiveStream _<_ P₂ b
     → (∀ n → ∃ (λ m → n m< just m × P₁ m × ¬ P₂ m))
-    → SortedExhaustiveStream' {A} _<_ (λ x → P₁ x × ¬ P₂ x) b
-  subtract' {b = b} str₁ str₂ good with good b
-  ... | (m , b<m , gm) with subtract'-step m gm b<m str₁ str₂
-  ... | x , r-str₁ , r-str₂ = x ∷ ♯ subtract' r-str₁ r-str₂ good
+    → SortedExhaustiveStream {A} _<_ (λ x → P₁ x × ¬ P₂ x) b
+  subtract {b = b} str₁ str₂ good with good b
+  ... | (m , b<m , gm) with subtract-step m gm b<m (str₁ , str₂)
+  ... | x , r-str₁ , r-str₂ = x ∷ ♯ subtract r-str₁ r-str₂ good
 
 
 
@@ -131,11 +141,11 @@ substMinimum : ∀ {A : Set} → {P Q : A → Set} → {_<_ : A → A → Set}
   → Minimum Q _<_
 substMinimum to from (minimum value holds isMin) = minimum value (to holds) (λ qy → isMin (from qy))
 
-substExhaustiveStream' : 
+substExhaustiveStream : 
   ∀ {A : Set}  {_<_ : A → A → Set} → {P Q : A → Set}
   → (∀ {p} → P p → Q p) 
   → (∀ {q} → Q q → P q)
   → ∀ {b}
-  → SortedExhaustiveStream' _<_ P b
-  → SortedExhaustiveStream' _<_ Q b
-substExhaustiveStream' {P = P} {Q = Q} to from {b} (headd ∷ taill) = substMinimum (λ { (p , o) → (to p , o) }) (λ { (p , o) → (from p , o) }) headd ∷ ♯ substExhaustiveStream' to from (♭ taill)
+  → SortedExhaustiveStream _<_ P b
+  → SortedExhaustiveStream _<_ Q b
+substExhaustiveStream {P = P} {Q = Q} to from {b} (headd ∷ taill) = substMinimum (λ { (p , o) → (to p , o) }) (λ { (p , o) → (from p , o) }) headd ∷ ♯ substExhaustiveStream to from (♭ taill)
