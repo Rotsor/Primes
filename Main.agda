@@ -19,7 +19,7 @@ print n = putStrLn (show n) -- (toℕ (n mod 3)))
 printMults : ℕ → ℕ → IO ⊤
 printMults n k = ♯ print (n * k) >> ♯ printMults n (suc k)
 
-printAll : ∀ {P : ℕ → Set} {b : Maybe ℕ} → SortedExhaustiveStream' _<_ P b → IO ⊥
+printAll : ∀ {P : ℕ → Set} {b : Maybe ℕ} → SortedExhaustiveStream _<_ P b → IO ⊥
 printAll (minimum x _ _ ∷ taill) = ♯ print x >> ♯ printAll (♭ taill)
 
 main = run (printAll all-primes)

@@ -86,7 +86,7 @@ module WithTotalOrder (A : Set) (_<_ : A → A → Set) (order : IsStrictTotalOr
     → (mx : A)
     → (P₁ mx × ¬ P₂ mx)
     → SSTEP P₁ P₂ mx n
-  subtract-step {P₁} {P₂} {n} mx (p₁x , ¬p₂x) = All.wfRec (m>-wf (just mx)) (SSTEP P₁ P₂ mx) go'' n where 
+  subtract-step {P₁} {P₂} {n} mx (p₁x , ¬p₂x) = All.wfRec (m>-wf (just mx)) _ (SSTEP P₁ P₂ mx) go'' n where 
 
     _>_ = Bounded-> _m<_ (just mx)
 
