@@ -44,7 +44,7 @@ wf = qqq where
  lemm : ∀ a b → a > pred b → a ≢ b → a > b
  lemm a zero gt neq = gt
  lemm a (suc n) gt neq with compare a (suc n)
- lemm a (suc n) gt neq | tri< a' ¬b ¬c = ⊥-elim (irrefl PropEq.refl (Relation.Binary.DecTotalOrder.trans Data.Nat.decTotalOrder a' gt))
+ lemm a (suc n) gt neq | tri< a' ¬b ¬c = ⊥-elim (irrefl PropEq.refl (Relation.Binary.DecTotalOrder.trans Data.Nat.Properties.≤-decTotalOrder a' gt))
  lemm a (suc n) gt neq | tri≈ ¬a b ¬c = ⊥-elim (neq b)
  lemm a (suc n) gt neq | tri> ¬a ¬b c = c
 

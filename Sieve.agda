@@ -33,7 +33,7 @@ open StrictTotalOrder Data.Nat.Properties.strictTotalOrder
 open WithTotalOrder ℕ _<_ ( StrictTotalOrder.isStrictTotalOrder (Data.Nat.Properties.strictTotalOrder)) NatBoundedGtWF.wf
 
 private
- module ≤O = DecTotalOrder Data.Nat.decTotalOrder
+ module ≤O = DecTotalOrder Data.Nat.Properties.≤-decTotalOrder
  module <O = StrictTotalOrder Data.Nat.Properties.strictTotalOrder
 
 open import Sieve0
@@ -42,7 +42,6 @@ open import Function
 open import Multiples
 
 open import Algebra
-open CommutativeSemiring Data.Nat.Properties.commutativeSemiring using (+-comm; *-comm; *-identity)
 
 abstract
  small-not-retained : ∀ {n} {x} → IsRetainedAfterSieve≤ n x → x > n
@@ -59,18 +58,10 @@ hoho {n} (minimum p ((p>1 , isRet) , _) isMin) = minimum p (isPrime , p>n) isMin
 
   open import Data.Sum
 
-  ∣-trans : ∀ {a b c} → a ∣ b → b ∣ c → a ∣ c
-  ∣-trans {a} {b} {c} = Poset.trans Data.Nat.Divisibility.poset {a} {b} {c}
-
   isMin' : IsMinimal (IsPrime'> n) _<_ p
   isMin' {q} ((q>1 , q-prime) , n<q) = isMin {q} ((q>1 , gg) , record {}) where
    gg : ∀ x → x ≤ n → IsPrime x → ¬ x ∣ q
    gg p' p'≤n = q-prime p' (≤O.trans (s≤s p'≤n) n<q)
-
-  ≮⇒≥ : ∀ {a b} → ¬ a < b → a ≥ b
-  ≮⇒≥ {_} {zero} nl = z≤n
-  ≮⇒≥ {zero} {suc b} nl = ⊥-elim (nl (s≤s z≤n))
-  ≮⇒≥ {suc a} {suc b} nl = s≤s (≮⇒≥ (λ x → nl (s≤s x)))
 
   isPrime : IsPrime' p
   isPrime = p>1 , (λ m m<p mp → isRet m (≮⇒≥ (λ n<m → isMin' {m} (prime⇒prime' mp , n<m) m<p)) mp)

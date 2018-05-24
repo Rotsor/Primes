@@ -1,7 +1,7 @@
 module Factorisation where
 
 open import Data.Nat
-open import Data.Nat.Properties
+open import Data.Nat.Properties hiding (+-comm; *-assoc)
 open import Data.Nat.Divisibility
 open import Algebra
 open CommutativeSemiring Data.Nat.Properties.commutativeSemiring using (+-comm; *-assoc)
@@ -31,6 +31,7 @@ open import Induction.Nat
 Prime : Set
 Prime = Σ ℕ IsPrime
 
+import Data.List.Any.Membership
 open Data.List.Any.Membership (setoid Prime)
 
 data Composite : ℕ → Set where
@@ -111,21 +112,19 @@ open import Function.Inverse
 open import Function.Equality
 
 extend : ∀ n → (PrimesTo n) → Dec (IsPrime n) → PrimesTo (suc n)
-extend n (primes , good) dec = new ++ primes , gnl where
+extend n (primes , good) dec = new dec ++ primes , gnl dec where
 
-  new : List Prime
-  new with dec
-  new | yes p = (n , p) ∷ []
-  new | no ¬p = []
+  new : Dec (IsPrime n) → List Prime
+  new dec with dec
+  ... | yes p = (n , p) ∷ []
+  ... | no ¬p = []
 
-  gnl : Primes-Good-To (suc n) (new ++ primes)
-  gnl p lss with ≤⇒≤′ lss
-  gnl (._ , _) lss | ≤′-refl with dec
-  gnl (.n , prf) lss | ≤′-refl | yes pp = here refl
-  gnl (.n , prf) lss | ≤′-refl | no ¬p = ⊥-elim (¬p prf)
-  gnl p lss | ≤′-step m≤′n = Inverse.to (++↔ {xs = new} {ys = primes}) ⟨$⟩ (inj₂ (good p (≤′⇒≤ m≤′n)))
-
-
+  gnl : (dec : Dec (IsPrime n)) → Primes-Good-To (suc n) (new dec ++ primes)
+  gnl dec p lss with ≤⇒≤′ lss
+  gnl dec (._ , _) lss | ≤′-refl with dec
+  gnl _ (.n , prf) lss | ≤′-refl | yes pp = here refl
+  gnl _ (.n , prf) lss | ≤′-refl | no ¬p = ⊥-elim (¬p prf)
+  gnl dec p lss | ≤′-step m≤′n = Inverse.to (++↔ {xs = new dec} {ys = primes}) ⟨$⟩ (inj₂ (good p (≤′⇒≤ m≤′n)))
 
 zero-nonprime : ¬ IsPrime 0
 zero-nonprime (_ , prm) with prm 2 (divides 0 refl)
@@ -152,7 +151,7 @@ prime? n with factor n
 prime? .0 | zero = no  zero-nonprime
 prime? .1 | one = no  one-nonprime
 prime? .(p + 0) | fact (p , p-good) 0 with p + 0 | +-comm p 0
-prime? .(proj₁ (p , p-good) + zero * proj₁ (p , p-good)) | fact (p , p-good) zero | .p | refl = yes p-good
+prime? ._ | fact (p , p-good) zero | .p | refl = yes p-good
 prime? .((suc (suc m)) * proj₁ p) | fact p (suc m) with prime≥2' p
 prime? .((2 + m) * (2 + p-2)) | fact (.(suc (suc p-2)) , prm) (suc m) | p-2 , refl = no (composite-¬prime ((2 + m) * (2 + p-2)) (composite m p-2))
 
@@ -174,16 +173,13 @@ prime⇒prime' {suc (suc n)} (_ , isPrime) = s≤s (s≤s z≤n) , gg where
   gg m m<n m-prime divs | inj₁ m≡n = StrictTotalOrder.irrefl strictTotalOrder m≡n m<n
   gg m m<n (m≢1 , m-prime) divs | inj₂ m≡1 = m≢1 m≡1
 
-private
- ∣-trans = λ {a} {b} {c} → Poset.trans Data.Nat.Divisibility.poset {a} {b} {c}
-
 
 ∣⇒≤' : ∀ {m n} → n ≢ 0 → m ∣ n → m ≤ n
 ∣⇒≤' {m} {zero} nz divs = ⊥-elim (nz refl)
 ∣⇒≤' {m} {suc n} gtt divs = ∣⇒≤ divs
 
 private 
- module ≤O = DecTotalOrder decTotalOrder
+ module ≤O = DecTotalOrder Data.Nat.Properties.≤-decTotalOrder
  module <O = StrictTotalOrder strictTotalOrder
 
 prime'⇒prime : ∀ {n} → IsPrime' n → IsPrime n
@@ -195,14 +191,13 @@ prime'⇒prime {suc (suc n)} (_ , pr) = (λ { () }) , gg where
   gg m m∣n | tri< a ¬b ¬c with factor m
   gg .0 m∣n | tri< a ¬b ¬c | zero = inj₁ (PropEq.sym (0∣⇒≡0 m∣n))
   gg .1 m∣n | tri< a ¬b ¬c | one = inj₂ PropEq.refl
-  gg .((1 + q) * p) m∣n | tri< m<n ¬b ¬c | fact (p , p-prime) q = ⊥-elim (pr p (≤O.trans (s≤s (∣⇒≤' {p} {(1 + q) * p} damn (divides (1 + q) refl))) m<n ) p-prime (∣-trans (divides (1 + q) PropEq.refl) m∣n)) where
-    damn : (1 + q) * p ≢ 0
-    damn zz with (1 + q) * p | m∣n
-    damn _ | zero | m∣n' with 0∣⇒≡0 m∣n'
+  gg .((1 + q) * p) m∣n | tri< m<n ¬b ¬c | fact (p , p-prime) q = ⊥-elim (pr p (≤O.trans (s≤s (∣⇒≤' {p} {(1 + q) * p} (damn m∣n) (divides (1 + q) refl))) m<n ) p-prime (∣-trans (divides (1 + q) PropEq.refl) m∣n)) where
+    damn : (p + q * p ∣ suc (suc n)) → (1 + q) * p ≢ 0
+    damn m∣n zz with (1 + q) * p | m∣n
+    damn m∣n _ | zero | m∣n' with 0∣⇒≡0 m∣n'
     ... | ()
-    damn () | suc n' | m∣n'
+    damn m∣n () | suc n' | m∣n'
   gg m m∣n | tri≈ ¬a b ¬c = inj₁ b
   gg m m∣n | tri> ¬a ¬b c with ∣⇒≤ m∣n
   ... | qqq =  ⊥-elim (<O.irrefl refl (≤O.trans c qqq)) 
-
 

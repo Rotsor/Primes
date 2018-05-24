@@ -25,7 +25,7 @@ open PropEq using (_≡_)
 open import Data.Empty
 
 private
- module ≤O = DecTotalOrder Data.Nat.decTotalOrder
+ module ≤O = DecTotalOrder Data.Nat.Properties.≤-decTotalOrder
  module <O = StrictTotalOrder Data.Nat.Properties.strictTotalOrder
 
 

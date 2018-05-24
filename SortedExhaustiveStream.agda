@@ -31,6 +31,7 @@ Good : ∀ {A : Set} (P : A → Set) (_<_ : A → A → Set) (bound : Maybe A) �
 Good P _<_ bnd x = let open MRel _<_ in P x × bnd m< just x
 
 record SortedExhaustiveStream {A : Set} (_<_ : A → A → Set) (P : A → Set) (b : Maybe A) : Set where
+ inductive
  constructor _∷_
  field
   headd : Minimum (Good P _<_ b) _<_

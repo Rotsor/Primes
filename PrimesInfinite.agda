@@ -12,13 +12,15 @@ import Relation.Binary.PropositionalEquality as PropEq
 open PropEq using (_≡_)
 open MRel _<_
 open import Algebra
-open import Data.Nat.Properties
+open import Data.Nat.Properties hiding(+-comm; *-comm)
 open CommutativeSemiring commutativeSemiring
 
 
 open import Data.List.Any
 open import Data.List.All
 open import Data.List
+import Data.List.Any.Membership
+module Membership = Data.List.Any.Membership
 
 anyMap : ∀ {A B : Set} → (f : A → B) → {P₁ : A → Set} → {P₂ : B → Set} → (f-preserves : ∀ {x} → P₁ x → P₂ (f x))
   → ∀ {l} → Any P₁ l → Any P₂ (Data.List.map f  l)
