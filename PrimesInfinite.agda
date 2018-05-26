@@ -19,8 +19,8 @@ open CommutativeSemiring commutativeSemiring
 open import Data.List.Any
 open import Data.List.All
 open import Data.List
-import Data.List.Any.Membership
-module Membership = Data.List.Any.Membership
+import Data.List.Membership.Setoid
+module Membership = Data.List.Membership.Setoid
 
 anyMap : ∀ {A B : Set} → (f : A → B) → {P₁ : A → Set} → {P₂ : B → Set} → (f-preserves : ∀ {x} → P₁ x → P₂ (f x))
   → ∀ {l} → Any P₁ l → Any P₂ (Data.List.map f  l)

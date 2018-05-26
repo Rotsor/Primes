@@ -9,7 +9,7 @@ open import Data.Empty
 open import Factorisation
 
 open import Relation.Nullary
-open import Relation.Binary
+open import Relation.Binary hiding(Minimum)
 open import Relation.Unary using(Pred)
 import Level
 

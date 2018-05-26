@@ -7,7 +7,7 @@ open import Data.Empty
 open import Data.Sum
 open import Data.Product
 open import Coinduction
-open import Relation.Binary
+open import Relation.Binary hiding (Minimum)
 import Relation.Binary.PropositionalEquality as PropEq
 open PropEq using (_≡_)
 open import Relation.Unary

@@ -31,8 +31,8 @@ open import Induction.Nat
 Prime : Set
 Prime = Σ ℕ IsPrime
 
-import Data.List.Any.Membership
-open Data.List.Any.Membership (setoid Prime)
+import Data.List.Membership.Setoid
+open Data.List.Membership.Setoid (setoid Prime)
 
 data Composite : ℕ → Set where
   composite : ∀ a b → Composite ((2 + a) * (2 + b))

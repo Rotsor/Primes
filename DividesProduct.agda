@@ -7,7 +7,7 @@ import Data.Nat.Divisibility as Div
 open Div
 import Relation.Binary.PropositionalEquality as PropEq
 open PropEq
-open import Data.List.Any.Membership (setoid ℕ)
+open import Data.List.Membership.Setoid (setoid ℕ)
 open import Data.Nat.Properties
 open SemiringSolver
 open import Relation.Binary
