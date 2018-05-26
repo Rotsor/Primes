@@ -93,12 +93,12 @@ sieve-step {n} (headd ∷ taill) = p , substExhaustiveStream to from (subtract {
   import PrimesInfinite
 
   infinite' : ∀ n' → ∃ (λ m → n' < m × IsRetainedAfterSieve≤ n m × ¬ pv ∣ m)
-  infinite' n with PrimesInfinite.infinite (1 + pv + n)
-  ... | m , 1+pv+n<m , good = m , (≤O.trans (s≤s (n≤m+n (1 + pv) n)) 1+pv+n<m , from (≤O.trans (m≤m+n 2 (pv + n)) 1+pv+n<m , λ {x x≤pv → good x (≤O.trans x≤pv (≤O.trans (m≤m+n pv n) (n≤m+n 1 (pv + n)))) } ))
+  infinite' n = case PrimesInfinite.infinite (1 + pv + n) of λ where
+    (m , 1+pv+n<m , good) → m , (≤O.trans (s≤s (n≤m+n (1 + pv) n)) 1+pv+n<m , from (≤O.trans (m≤m+n 2 (pv + n)) 1+pv+n<m , λ {x x≤pv → good x (≤O.trans x≤pv (≤O.trans (m≤m+n pv n) (n≤m+n 1 (pv + n)))) } ))
 
   infinite : ∀ n' → ∃ (λ m → n' m< just m × IsRetainedAfterSieve≤ n m × ¬ pv ∣ m)
-  infinite nothing with infinite' 0
-  ... | m , _ , res = m , record {} , res
+  infinite nothing = case infinite' 0 of λ where
+   (m , _ , res) → m , record {} , res
   infinite (just n) = infinite' n
 
 AllPrimes = SortedExhaustiveStream _<_ IsPrime' (just 0)
